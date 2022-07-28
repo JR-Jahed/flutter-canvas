@@ -18,8 +18,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  double xPos = 10;
-  double yPos = 10;
+  double xPos = 0;
+  double yPos = 0;
   bool dragging = false;
 
   double scaleX = 1.0, scaleY = 1.0;
@@ -33,11 +33,7 @@ class _HomePageState extends State<HomePage> {
   double widthAtBeginningOfDrag = 0.0;
   double heightAtBeginningOfDrag = 0.0;
 
-  // bool _insideRect(double x, double y) =>
-  //     x >= xPos + MediaQuery.of(context).padding.left &&
-  //     x <= xPos + width + MediaQuery.of(context).padding.left &&
-  //     y >= yPos + MediaQuery.of(context).padding.top &&
-  //     y <= yPos + height + MediaQuery.of(context).padding.top;
+  double padTop = 0.0;
 
   bool _insideRect(double x, double y) =>
       x >= xPos + MediaQuery.of(context).padding.left &&
@@ -64,12 +60,14 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    padTop = MediaQuery.of(context).padding.top;
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
           return GestureDetector(
             onTapDown: (details) {
+
               tapX = details.globalPosition.dx;
               tapY = details.globalPosition.dy;
 
@@ -79,9 +77,10 @@ class _HomePageState extends State<HomePage> {
 
               if (idx != -1) {
                 setState(() {
-                  curCircles[idx].second = 10;
+                  curCircles[idx].second = 20;
                 });
               }
+
               widthAtBeginningOfDrag = Painter.curWidth - 10;
               heightAtBeginningOfDrag = Painter.curHeight - 10;
             },
@@ -92,38 +91,69 @@ class _HomePageState extends State<HomePage> {
                   curCircles[idx].second = 5;
                 });
               }
+
+              // final x = details.globalPosition.dx;
+              // final y = details.globalPosition.dy - padTop;
+              //
+              // final midX = Painter.textBeginX + widthAtBeginningOfDrag / 2;
+              // final midY = Painter.textBeginY + heightAtBeginningOfDrag / 2;
+              // final widthFromMidUntilCurPoint = (x - midX).abs();
+              // final heightFromMidUntilCurPoint = (y - midY).abs();
+              // final pix = MediaQuery.of(context).devicePixelRatio;
+              //
+              // print('pad = $padTop');
+              // print('wabod  ${widthAtBeginningOfDrag / 2 * pix}'
+              //     '    habod  ${heightAtBeginningOfDrag / 2 * pix}');
+              // print('tbx ${Painter.textBeginX * pix}  tby ${Painter.textBeginY * pix}'
+              //     '  mx ${midX * pix} ${Painter.staticOffset.dx * pix}  my ${midY * pix}  ${Painter.staticOffset.dy * pix} x ${x * pix} y ${y * pix}');
+              //
+              // //print('${curCircles[0].first.dx * pix}   ${curCircles[0].first.dy * pix}');
+              // print('');
             },
             onTap: () {
+
               setState(() {
                 rect = _insideRect(tapX, tapY);
               });
             },
             onPanStart: (details) {
               dragging = _insideRect(details.globalPosition.dx, details.globalPosition.dy);
+              widthAtBeginningOfDrag = Painter.curWidth - 10;
+              heightAtBeginningOfDrag = Painter.curHeight - 10;
             },
 
             onPanUpdate: (details) {
               final x = details.globalPosition.dx;
-              final y = details.globalPosition.dy;
+              double y = details.globalPosition.dy;
 
               final idx = _insideCircle(x, y);
 
+              y -= padTop;
+
               if(idx != -1) {
-                if(idx != 3) {
+                //if(idx != 3) {
                   final midX = Painter.textBeginX + widthAtBeginningOfDrag / 2;
                   final midY = Painter.textBeginY + heightAtBeginningOfDrag / 2;
                   final widthFromMidUntilCurPoint = (x - midX).abs();
                   final heightFromMidUntilCurPoint = (y - midY).abs();
+                  final pix = MediaQuery.of(context).devicePixelRatio;
 
-                  print('$widthFromMidUntilCurPoint  ${widthAtBeginningOfDrag / 2}'
-                      '    $heightFromMidUntilCurPoint  ${heightAtBeginningOfDrag / 2}'
-                  '    $midX   $midY  $y ${Painter.textBeginY}');
+                  print(pix);
+                  print('${widthFromMidUntilCurPoint * pix}  ${widthAtBeginningOfDrag / 2 * pix}'
+                      '    ${heightFromMidUntilCurPoint * pix}  ${heightAtBeginningOfDrag / 2 * pix}');
+                  print('tbx ${Painter.textBeginX * pix}  tby ${Painter.textBeginY * pix}'
+                      '  mx ${midX * pix}  my ${midY * pix}  x ${x * pix} y ${y * pix}');
+
+                  //print('${curCircles[0].first.dx * pix}   ${curCircles[0].first.dy * pix}');
+                  print('');
 
                   setState(() {
                     scaleX = widthFromMidUntilCurPoint / (widthAtBeginningOfDrag / 2);
                     scaleY = heightFromMidUntilCurPoint / (heightAtBeginningOfDrag / 2);
+
+                    print('scaleX = $scaleX  scaleY = $scaleY');
                   });
-                }
+                //}
               }
 
               if (dragging) {
@@ -206,6 +236,8 @@ class Painter extends CustomPainter {
   static double textBeginX = 0, textBeginY = 0;
   static List<Pair<Offset, double>> curCirclesStatic = [];
 
+  static Offset staticOffset = Offset(0, 0);
+
   @override
   void paint(Canvas canvas, Size size) {
 
@@ -284,6 +316,14 @@ class Painter extends CustomPainter {
 
     textBeginX = offset.dx + 5;
     textBeginY = offset.dy + 5;
+
+    //canvas.drawCircle(Offset(textBeginX, textBeginY), 3, paint..color = Colors.brown);
+
+    final off = Offset(textBeginX + textPainter.width / 2, textBeginY + textPainter.height / 2);
+
+    staticOffset = off;
+
+    //canvas.drawCircle(off, 3, Paint()..color = Colors.blue);
 
     textPainter.paint(canvas, Offset(textBeginX, textBeginY));
   }
