@@ -23,6 +23,8 @@ class _HomePageState extends State<HomePage> {
   bool dragging = false;
 
   double scaleX = 1.0, scaleY = 1.0;
+  double tX = 0.0, tY = 0.0;
+  double rotateAngle = 0.0;
   bool zoomedIn = false;
   bool rect = false;
 
@@ -35,11 +37,19 @@ class _HomePageState extends State<HomePage> {
 
   double padTop = 0.0;
 
+  bool circleSelectedForScale = false;
+
+  bool _insideRect2(double x, double y) =>
+      x >= Painter.curOffset.dx + MediaQuery.of(context).padding.left &&
+      x <= Painter.curOffset.dx + MediaQuery.of(context).padding.left + Painter.curWidthRect &&
+      y >= Painter.curOffset.dy + MediaQuery.of(context).padding.top &&
+      y <= Painter.curOffset.dy + MediaQuery.of(context).padding.top + Painter.curHeightRect;
+
   bool _insideRect(double x, double y) =>
       x >= xPos + MediaQuery.of(context).padding.left &&
-      x <= xPos + MediaQuery.of(context).padding.left + Painter.curWidth &&
+      x <= xPos + MediaQuery.of(context).padding.left + Painter.curWidthRect &&
       y >= yPos + MediaQuery.of(context).padding.top &&
-      y <= yPos + MediaQuery.of(context).padding.top + Painter.curHeight;
+      y <= yPos + MediaQuery.of(context).padding.top + Painter.curHeightRect;
 
   int _insideCircle(double x, double y) {
     for (int i = 0; i < curCircles.length; i++) {
@@ -54,8 +64,32 @@ class _HomePageState extends State<HomePage> {
     return -1;
   }
 
-  double degToRad(int deg) {
+  int _insideCircle2(double x, double y) {
+
+    List<Offset> tmp = [];
+    tmp.add(Painter.curOffset);
+    tmp.add(Offset(Painter.curOffset.dx + Painter.curWidthRect, Painter.curOffset.dy));
+    tmp.add(Offset(Painter.curOffset.dx, Painter.curOffset.dy + Painter.curHeightRect));
+    tmp.add(Offset(Painter.curOffset.dx + Painter.curWidthRect, Painter.curOffset.dy + Painter.curHeightRect));
+    tmp.add(Offset(Painter.curOffset.dx + Painter.curWidthRect / 2, Painter.curOffset.dy + Painter.curHeightRect * 2));
+
+    for (int i = 0; i < tmp.length; i++) {
+      final o = tmp[i];
+      if (x >= o.dx - 20 + MediaQuery.of(context).padding.left &&
+          x <= o.dx + 20 + MediaQuery.of(context).padding.left &&
+          y >= o.dy - 20 + MediaQuery.of(context).padding.top &&
+          y <= o.dy + 20 + MediaQuery.of(context).padding.top) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  double degToRad(double deg) {
     return deg * pi / 180.0;
+  }
+  double radToDeg(double rad) {
+    return rad * 180.0 / pi;
   }
 
   @override
@@ -72,113 +106,122 @@ class _HomePageState extends State<HomePage> {
               tapY = details.globalPosition.dy;
 
               curCircles = Painter.curCirclesStatic;
-              final idx = _insideCircle(
+              final idx = _insideCircle2(
                   details.globalPosition.dx, details.globalPosition.dy);
 
               if (idx != -1) {
                 setState(() {
-                  curCircles[idx].second = 20;
+                  circleSelectedForScale = true;
+                  curCircles[idx].second = 10;
                 });
               }
 
-              widthAtBeginningOfDrag = Painter.curWidth - 10;
-              heightAtBeginningOfDrag = Painter.curHeight - 10;
+              widthAtBeginningOfDrag = Painter.curWidthRect - 10;
+              heightAtBeginningOfDrag = Painter.curHeightRect - 10;
             },
             onTapUp: (details) {
-              final idx = _insideCircle(details.globalPosition.dx, details.globalPosition.dy);
+              final idx = _insideCircle2(details.globalPosition.dx, details.globalPosition.dy);
               if (idx != -1) {
                 setState(() {
+                  circleSelectedForScale = false;
                   curCircles[idx].second = 5;
                 });
               }
-
-              // final x = details.globalPosition.dx;
-              // final y = details.globalPosition.dy - padTop;
-              //
-              // final midX = Painter.textBeginX + widthAtBeginningOfDrag / 2;
-              // final midY = Painter.textBeginY + heightAtBeginningOfDrag / 2;
-              // final widthFromMidUntilCurPoint = (x - midX).abs();
-              // final heightFromMidUntilCurPoint = (y - midY).abs();
-              // final pix = MediaQuery.of(context).devicePixelRatio;
-              //
-              // print('pad = $padTop');
-              // print('wabod  ${widthAtBeginningOfDrag / 2 * pix}'
-              //     '    habod  ${heightAtBeginningOfDrag / 2 * pix}');
-              // print('tbx ${Painter.textBeginX * pix}  tby ${Painter.textBeginY * pix}'
-              //     '  mx ${midX * pix} ${Painter.staticOffset.dx * pix}  my ${midY * pix}  ${Painter.staticOffset.dy * pix} x ${x * pix} y ${y * pix}');
-              //
-              // //print('${curCircles[0].first.dx * pix}   ${curCircles[0].first.dy * pix}');
-              // print('');
             },
             onTap: () {
 
               setState(() {
-                rect = _insideRect(tapX, tapY);
+                rect = _insideRect2(tapX, tapY);
               });
             },
             onPanStart: (details) {
-              dragging = _insideRect(details.globalPosition.dx, details.globalPosition.dy);
-              widthAtBeginningOfDrag = Painter.curWidth - 10;
-              heightAtBeginningOfDrag = Painter.curHeight - 10;
+              dragging = _insideRect2(details.globalPosition.dx, details.globalPosition.dy);
+              widthAtBeginningOfDrag = Painter.curWidthRect - 10;
+              heightAtBeginningOfDrag = Painter.curHeightRect - 10;
             },
 
             onPanUpdate: (details) {
               final x = details.globalPosition.dx;
               double y = details.globalPosition.dy;
 
-              final idx = _insideCircle(x, y);
+              final idx = _insideCircle2(x, y);
 
               y -= padTop;
 
-              if(idx != -1) {
-                //if(idx != 3) {
-                  final midX = Painter.textBeginX + widthAtBeginningOfDrag / 2;
-                  final midY = Painter.textBeginY + heightAtBeginningOfDrag / 2;
-                  final widthFromMidUntilCurPoint = (x - midX).abs();
-                  final heightFromMidUntilCurPoint = (y - midY).abs();
-                  final pix = MediaQuery.of(context).devicePixelRatio;
+              if(circleSelectedForScale) {
+                final midX = Painter.textBeginX + widthAtBeginningOfDrag / 2;
+                final midY = Painter.textBeginY + heightAtBeginningOfDrag / 2;
+                final widthFromMidUntilCurPoint = (x - midX).abs();
+                final heightFromMidUntilCurPoint = (y - midY).abs();
 
-                  print(pix);
-                  print('${widthFromMidUntilCurPoint * pix}  ${widthAtBeginningOfDrag / 2 * pix}'
-                      '    ${heightFromMidUntilCurPoint * pix}  ${heightAtBeginningOfDrag / 2 * pix}');
-                  print('tbx ${Painter.textBeginX * pix}  tby ${Painter.textBeginY * pix}'
-                      '  mx ${midX * pix}  my ${midY * pix}  x ${x * pix} y ${y * pix}');
+                // if(curCircles.length > 1) {
+                //   print('${curCircles[0].first.dx}  ${curCircles[0].first.dy} '
+                //       ' ---  ${curCircles[1].first.dx}  ${curCircles[1].first
+                //       .dy}');
+                // }
 
-                  //print('${curCircles[0].first.dx * pix}   ${curCircles[0].first.dy * pix}');
-                  print('');
-
+                if(idx != 4) {
                   setState(() {
+                    curCircles.clear();
                     scaleX = widthFromMidUntilCurPoint / (widthAtBeginningOfDrag / 2);
                     scaleY = heightFromMidUntilCurPoint / (heightAtBeginningOfDrag / 2);
-
-                    print('scaleX = $scaleX  scaleY = $scaleY');
                   });
-                //}
+                }
+                else {
+
+                  double angle = 0.0;
+
+                  if(widthFromMidUntilCurPoint != 0) {
+                    double angleRad = atan(heightFromMidUntilCurPoint / widthFromMidUntilCurPoint);
+                    angle = degToRad(radToDeg(angleRad) - 45);
+
+                    print('${radToDeg(angle)}  $x  $y off ${Painter.curOffset.dx}  ${Painter.curOffset.dy}');
+                  }
+                  else {
+                    angle = degToRad(90.0);
+                  }
+
+                  setState(() {
+                    curCircles.clear();
+                    rotateAngle = angle;
+                  });
+                }
               }
 
               if (dragging) {
                 setState(() {
-                  double curX = xPos + details.delta.dx;
-                  double curY = yPos + details.delta.dy;
-                  curCircles.clear();
-
-                  // curX = max(MediaQuery.of(context).padding.left, curX);
-                  // curY = max(MediaQuery.of(context).padding.top, curY);
+                  // double curX = xPos + details.delta.dx;
+                  // double curY = yPos + details.delta.dy;
+                  // curCircles.clear();
                   //
-                  // curX = min(MediaQuery.of(context).size.width - MediaQuery.of(context).padding.right - width, curX);
-                  // curY = min(MediaQuery.of(context).size.height - MediaQuery.of(context).padding.bottom - height, curY);
+                  // // curX = max(MediaQuery.of(context).padding.left, curX);
+                  // // curY = max(MediaQuery.of(context).padding.top, curY);
+                  // //
+                  // // curX = min(MediaQuery.of(context).size.width - MediaQuery.of(context).padding.right - width, curX);
+                  // // curY = min(MediaQuery.of(context).size.height - MediaQuery.of(context).padding.bottom - height, curY);
+                  //
+                  // xPos = curX;
+                  // yPos = curY;
 
-                  xPos = curX;
-                  yPos = curY;
+                  tX += details.delta.dx;
+                  tY += details.delta.dy;
                 });
               }
             },
             onPanEnd: (details) {
               dragging = false;
+
+              setState(() {
+                circleSelectedForScale = false;
+              //   curCircles.clear();
+              //   xPos = Painter.curOffset.dx;
+              //   yPos = Painter.curOffset.dy;
+              });
             },
 
             onDoubleTap: () {
               setState(() {
+                rotateAngle = 0.0;
                 if (zoomedIn) {
                   scaleX = 1.0;
                   scaleY = 1.0;
@@ -190,6 +233,13 @@ class _HomePageState extends State<HomePage> {
                 zoomedIn = !zoomedIn;
               });
             },
+
+            // onLongPress: () {
+            //   setState(() {
+            //     tX += 1;
+            //     tY += 1;
+            //   });
+            // },
 
             // child: Container(
             //   margin: const EdgeInsets.all(10.0),
@@ -206,7 +256,10 @@ class _HomePageState extends State<HomePage> {
                   scaleY: scaleY,
                   curCircles: curCircles,
                   rect: rect,
-                  rotate: degToRad(0)),
+                  rotateAngle: rotateAngle,
+                  mat: Matrix4.identity(),
+                  tX: tX,
+                  tY: tY),
               child: Container(),
             ),
             //),
@@ -222,7 +275,9 @@ class Painter extends CustomPainter {
   double scaleX, scaleY;
   List<Pair<Offset, double>> curCircles;
   bool rect;
-  double rotate;
+  double rotateAngle;
+  Matrix4 mat;
+  double tX, tY;
 
   Painter(
       {required this.offset,
@@ -230,29 +285,18 @@ class Painter extends CustomPainter {
       this.scaleY = 1.0,
       required this.curCircles,
       required this.rect,
-      this.rotate = 0.0});
+      this.rotateAngle = 0.0,
+      required this.mat,
+      this.tX = 0.0,
+      this.tY = 0.0});
 
-  static double curWidth = 0, curHeight = 0;
+  static double curWidthRect = 0, curHeightRect = 0;
   static double textBeginX = 0, textBeginY = 0;
   static List<Pair<Offset, double>> curCirclesStatic = [];
-
-  static Offset staticOffset = Offset(0, 0);
+  static late  Offset curOffset;
 
   @override
   void paint(Canvas canvas, Size size) {
-
-    // final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
-    //   textAlign: TextAlign.center,
-    //   maxLines: 1,
-    //   fontSize: 40,
-    // ))
-    //   ..pushStyle(ui.TextStyle(color: Colors.pink))
-    //   ..addText('Jahed')
-    //   ..pop();
-    //
-    // final paragraph = builder.build();
-    //
-    // paragraph.layout(ui.ParagraphConstraints(width: 300));
 
     Paint paint = Paint()
       ..style = PaintingStyle.stroke
@@ -271,23 +315,43 @@ class Painter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: size.width - 20 - 15);
 
-    curWidth = textPainter.width + 10;
-    curHeight = textPainter.height + 10;
+    curWidthRect = textPainter.width + 10;
+    curHeightRect = textPainter.height + 10;
+
+    double nextWidthRect = curWidthRect * scaleX;
+    double nextHeightRect = curHeightRect * scaleY;
+
+    curOffset = Offset(offset.dx + (curWidthRect - nextWidthRect) / 2, offset.dy + (curHeightRect - nextHeightRect) / 2);
+
+    mat.translate(textBeginX + textPainter.width / 2, textBeginY + textPainter.height / 2);
+
+    mat.scale(scaleX, scaleY);
+    mat.rotateZ(rotateAngle);
+    mat.translate(tX, tY);
+
+    mat.translate(-(textBeginX + textPainter.width / 2), -(textBeginY + textPainter.height / 2));
+
+    canvas.transform(mat.storage);
+
+    print('$mat\n');
 
     if (rect) {
-      canvas.drawRect(Rect.fromLTWH(offset.dx, offset.dy, textPainter.width + 10, textPainter.height + 10), paint);
+      canvas.drawRect(Rect.fromLTWH(offset.dx, offset.dy, curWidthRect, curHeightRect), paint);
 
-      if (!find(offset)) {
-        curCircles.add(Pair(offset, 5));
+      if(!find(offset)) {
+        curCircles.add(Pair(first: offset, second: 5));
       }
-      if (!find(Offset(offset.dx + textPainter.width + 10, offset.dy))) {
-        curCircles.add(Pair(Offset(offset.dx + textPainter.width + 10, offset.dy), 5));
+      if(!find(Offset(offset.dx + curWidthRect, offset.dy))) {
+        curCircles.add(Pair(first: Offset(offset.dx + curWidthRect, offset.dy), second: 5));
       }
-      if (!find(Offset(offset.dx, offset.dy + textPainter.height + 10))) {
-        curCircles.add(Pair(Offset(offset.dx, offset.dy + textPainter.height + 10), 5));
+      if(!find(Offset(offset.dx, offset.dy + curHeightRect))) {
+        curCircles.add(Pair(first: Offset(offset.dx, offset.dy + curHeightRect), second: 5));
       }
-      if (!find(Offset(offset.dx + textPainter.width + 10, offset.dy + textPainter.height + 10))) {
-        curCircles.add(Pair(Offset(offset.dx + textPainter.width + 10, offset.dy + textPainter.height + 10), 5));
+      if(!find(Offset(offset.dx + curWidthRect, offset.dy + curHeightRect))) {
+        curCircles.add(Pair(first: Offset(offset.dx + curWidthRect, offset.dy + curHeightRect), second: 5));
+      }
+      if(!find(Offset(offset.dx + curWidthRect / 2, offset.dy + curHeightRect * 2))) {
+        curCircles.add(Pair(first: Offset(offset.dx + curWidthRect / 2, offset.dy + curHeightRect * 2), second: 5));
       }
 
       curCirclesStatic = curCircles;
@@ -302,30 +366,19 @@ class Painter extends CustomPainter {
       }
     }
 
-    Matrix4 mat;
-
-    mat = Matrix4.identity();
-
-    mat.translate(textPainter.width / 2, textPainter.height / 2);
-
-    mat.scale(scaleX, scaleY);
-
-    mat.translate(-textPainter.width / 2, -textPainter.height / 2);
-
-    canvas.transform(mat.storage);
-
     textBeginX = offset.dx + 5;
     textBeginY = offset.dy + 5;
 
     //canvas.drawCircle(Offset(textBeginX, textBeginY), 3, paint..color = Colors.brown);
 
-    final off = Offset(textBeginX + textPainter.width / 2, textBeginY + textPainter.height / 2);
-
-    staticOffset = off;
+    //final off = Offset(textBeginX + textPainter.width / 2, textBeginY + textPainter.height / 2);
 
     //canvas.drawCircle(off, 3, Paint()..color = Colors.blue);
 
     textPainter.paint(canvas, Offset(textBeginX, textBeginY));
+
+    curWidthRect = nextWidthRect;
+    curHeightRect = nextHeightRect;
   }
 
   @override
@@ -338,24 +391,24 @@ class Painter extends CustomPainter {
     return false;
   }
 
-  void drawRotated(Canvas canvas, Offset center, double angle, VoidCallback drawFunction) {
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(angle * pi / 180);
-
-    canvas.translate(-center.dx, -center.dy);
-
-    drawFunction();
-
-    canvas.restore();
-  }
+  // void drawRotated(Canvas canvas, Offset center, double angle, VoidCallback drawFunction) {
+  //   canvas.save();
+  //   canvas.translate(center.dx, center.dy);
+  //   canvas.rotate(angle * pi / 180);
+  //
+  //   canvas.translate(-center.dx, -center.dy);
+  //
+  //   drawFunction();
+  //
+  //   canvas.restore();
+  // }
 }
 
 class Pair<T, U> {
   T first;
   U second;
 
-  Pair(this.first, this.second);
+  Pair({required this.first, required this.second});
 }
 
 // class Painter extends CustomPainter {
@@ -706,7 +759,7 @@ class Pair<T, U> {
 // // // //   void performResize() {
 // // // //     size = Size(
 // // // //       constraints.hasBoundedWidth ? constraints.maxWidth : _preferredTotalWidth,
-// // // //       constraints.hasBoundedHeight ? constraints.maxHeight : _overlayDiameter,
+// // // //       constraints.hasBoundedHeight ? constraints.maxHeight : _oer,
 // // // //     );
 // // // //   }
 // // // //
