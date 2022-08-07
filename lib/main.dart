@@ -23,13 +23,14 @@ Matrix4 opMat = Matrix4.identity();
 Matrix4 finalMat = Matrix4.identity();
 
 
-
 List<Pair<Offset, double>> curCircles = [];
 
 double prWidth = -1, prHeight = -1;
 
 double totalScaleX = 1, totalScaleY = 1;
 double prDist = 0;
+
+double rotatedAngle = 0;
 
 class _HomePageState extends State<HomePage> {
 
@@ -53,17 +54,17 @@ class _HomePageState extends State<HomePage> {
 
   bool _insideRect(double x, double y) {
     return x >= finalMat.getTranslation().x &&
-        x <= Painter.curWidthRect * finalMat.storage[0] + finalMat.getTranslation().x &&
+        x <= curWidthRect + finalMat.getTranslation().x &&
         y >= finalMat.getTranslation().y &&
-        y <= Painter.curHeightRect * finalMat.storage[5] + finalMat.getTranslation().y;
+        y <= curHeightRect + finalMat.getTranslation().y;
   }
 
   bool _insideRect2(double x, double y) {
 
-    return x >=finalMat.getTranslation().x &&
-        x <= curWidthRect + finalMat.getTranslation().x &&
-        y >=finalMat.getTranslation().y &&
-        y <= curHeightRect * finalMat.getTranslation().y;
+    return x >=finalMat.getTranslation().x * cos(degToRad(rotatedAngle)) &&
+        x <= curWidthRect + finalMat.getTranslation().x * cos(degToRad(degToRad(rotatedAngle))) &&
+        y >=finalMat.getTranslation().y * sin(degToRad(rotatedAngle)) &&
+        y <= curHeightRect + finalMat.getTranslation().y * sin(degToRad(rotatedAngle));
   }
 
   int _insideCircle(double x, double y) {
@@ -71,15 +72,18 @@ class _HomePageState extends State<HomePage> {
 
     List<Offset> tmp = [];
     tmp.add(Offset(finalMat.getTranslation().x, finalMat.getTranslation().y));
-    tmp.add(Offset(Painter.curWidthRect * finalMat.storage[0] + finalMat.getTranslation().x, finalMat.getTranslation().y));
-    tmp.add(Offset(finalMat.getTranslation().x, Painter.curHeightRect * finalMat.storage[5] + finalMat.getTranslation().y));
-    tmp.add(Offset(Painter.curWidthRect * finalMat.storage[0] + finalMat.getTranslation().x,
-        Painter.curHeightRect * finalMat.storage[5] + finalMat.getTranslation().y));
-    tmp.add(Offset(Painter.curWidthRect / 2 * finalMat.storage[0] + finalMat.getTranslation().x,
-        Painter.curHeightRect * 2 * finalMat.storage[5] + finalMat.getTranslation().y));
+    tmp.add(Offset(curWidthRect + finalMat.getTranslation().x, finalMat.getTranslation().y));
+    tmp.add(Offset(finalMat.getTranslation().x, curHeightRect + finalMat.getTranslation().y));
+    tmp.add(Offset(curWidthRect + finalMat.getTranslation().x, curHeightRect + finalMat.getTranslation().y));
+    tmp.add(Offset(curWidthRect / 2 + finalMat.getTranslation().x,
+        curHeightRect * 2 + finalMat.getTranslation().y));
+
+    print('inside x = $x  y = $y');
 
     for (int i = 0; i < tmp.length; i++) {
       final o = tmp[i];
+      print('dxleft = ${o.dx - 20 * finalMat.storage[0]} dxright = ${o.dx + 20 * finalMat.storage[5]}'
+          '  dyleft = ${o.dy - 20 * finalMat.storage[0]} dyright = ${o.dy + 20 * finalMat.storage[5]}');
       if (x >= o.dx - 20 * finalMat.storage[0] &&
           x <= o.dx + 20 * finalMat.storage[0] &&
           y >= o.dy - 20 * finalMat.storage[5] &&
@@ -90,7 +94,32 @@ class _HomePageState extends State<HomePage> {
     return -1;
   }
 
+  // int _insideCircle(double x, double y) {
+  //   if(!rect || curCircles.isEmpty) return -1;
+  //
+  //   List<Offset> tmp = [];
+  //   tmp.add(Offset(finalMat.getTranslation().x, finalMat.getTranslation().y));
+  //   tmp.add(Offset(Painter.curWidthRect * finalMat.storage[0] + finalMat.getTranslation().x, finalMat.getTranslation().y));
+  //   tmp.add(Offset(finalMat.getTranslation().x, Painter.curHeightRect * finalMat.storage[5] + finalMat.getTranslation().y));
+  //   tmp.add(Offset(Painter.curWidthRect * finalMat.storage[0] + finalMat.getTranslation().x,
+  //       Painter.curHeightRect * finalMat.storage[5] + finalMat.getTranslation().y));
+  //   tmp.add(Offset(Painter.curWidthRect / 2 * finalMat.storage[0] + finalMat.getTranslation().x,
+  //       Painter.curHeightRect * 2 * finalMat.storage[5] + finalMat.getTranslation().y));
+  //
+  //   for (int i = 0; i < tmp.length; i++) {
+  //     final o = tmp[i];
+  //     if (x >= o.dx - 20 * finalMat.storage[0] &&
+  //         x <= o.dx + 20 * finalMat.storage[0] &&
+  //         y >= o.dy - 20 * finalMat.storage[5] &&
+  //         y <= o.dy + 20 * finalMat.storage[5]) {
+  //       return i;
+  //     }
+  //   }
+  //   return -1;
+  // }
+
   void calculateMid() {
+
     midX = finalMat.getTranslation().x + curWidthRect / 2;
     midY = finalMat.getTranslation().y + curHeightRect / 2;
   }
@@ -100,8 +129,6 @@ class _HomePageState extends State<HomePage> {
   double radToDeg(double rad) {
     return rad * 180 / pi;
   }
-
-  // after scaling the circle doesn't move to the point where the pointer is because it spreads evenly
 
   void scale(double sX, double sY, double tX, double tY) {
     opMat.setFrom(downMat);
@@ -147,6 +174,8 @@ class _HomePageState extends State<HomePage> {
 
                     idxOfSelectedCircle = _insideCircle(lastX, lastY);
 
+                    print('tapdown  $idxOfSelectedCircle');
+
                     if(curWidthRect == -1 && curHeightRect == -1) {
                       curWidthRect = Painter.curWidthRect;
                       curHeightRect = Painter.curHeightRect;
@@ -168,6 +197,8 @@ class _HomePageState extends State<HomePage> {
                     double x = details.globalPosition.dx - padLeft;
                     double y = details.globalPosition.dy - padTop;
                     idxOfSelectedCircle = _insideCircle(x, y);
+
+                    print('tapup   $idxOfSelectedCircle');
 
                     if(idxOfSelectedCircle != -1) {
                       setState(() {
@@ -206,7 +237,6 @@ class _HomePageState extends State<HomePage> {
                     prWidth = curWidthRect;
                     prHeight = curHeightRect;
 
-
                     if(idxOfSelectedCircle == -1) {
                       idxOfSelectedCircle = _insideCircle(lastX, lastY);
 
@@ -217,6 +247,7 @@ class _HomePageState extends State<HomePage> {
                         });
                       }
                     }
+                    print('panstart   $idxOfSelectedCircle');
                   },
 
                   onPanUpdate: (details) {
@@ -229,6 +260,8 @@ class _HomePageState extends State<HomePage> {
 
                     double dx = x - lastX;
                     double dy = y - lastY;
+
+                    print('panupdate   $idxOfSelectedCircle');
 
                     if(idxOfSelectedCircle >= 0 && idxOfSelectedCircle <= 3) {
                       double ddx, ddy;
@@ -272,7 +305,7 @@ class _HomePageState extends State<HomePage> {
                       double tX = Painter.curWidthRect / 2, tY = Painter.curHeightRect / 2;
 
                       double angle = atan(ddx / ddy);
-                      print('$angle   $ddx   $ddy   midx = $midX  midy = $midY tX = ${finalMat.getTranslation().x} tY = ${finalMat.getTranslation().y}');
+                      //print('$angle   $ddx   $ddy   midx = $midX  midy = $midY tX = ${finalMat.getTranslation().x} tY = ${finalMat.getTranslation().y}');
                       rotate(angle, tX, tY);
                       setState(() {});
                     }
@@ -288,23 +321,28 @@ class _HomePageState extends State<HomePage> {
 
                     tapX = tapY = -1;
 
+                    print('panend   $idxOfSelectedCircle');
+
                     if(idxOfSelectedCircle != -1) {
                       setState(() {
                         curCircles[idxOfSelectedCircle].second = 5;
                       });
+                      idxOfSelectedCircle = -1;
                     }
                   },
-                  onLongPress: () {
-                    //urRotation += 30;
-                    double tX = Painter.curWidthRect / 2, tY = Painter.curHeightRect / 2;
-                    rotate(degToRad(30), tX, tY);
-
-                    calculateMid();
-
-                    print('mx = $midX  my = $midY');
-
-                    setState(() {});
-                  },
+                  // onLongPress: () {
+                  //   //curRotation += 30;
+                  //   double tX = Painter.curWidthRect / 2, tY = Painter.curHeightRect / 2;
+                  //   rotate(degToRad(30), tX, tY);
+                  //
+                  //   rotatedAngle += 30;
+                  //
+                  //   calculateMid();
+                  //
+                  //   print('mx = $midX  my = $midY   ${finalMat.storage[1]}  ${radToDeg(asin(finalMat.storage[1]))}');
+                  //
+                  //   setState(() {});
+                  // },
 
                   child: CustomPaint(
                     painter: Painter(
@@ -334,7 +372,7 @@ class Painter extends CustomPainter {
   final Paint _paint = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 4.0
-    ..color = Colors.yellow;
+    ..color = Colors.blue;
 
   final Paint _paintRed = Paint()
     ..color = Colors.red;
@@ -395,7 +433,7 @@ class Painter extends CustomPainter {
         canvas.drawCircle(
             p.first,
             p.second,
-            (p == curCirclesPainter.last ? _paintRed : _paintGreen));
+            (p == curCirclesPainter.last ? _paintGreen : _paintRed));
       }
     }
   }
