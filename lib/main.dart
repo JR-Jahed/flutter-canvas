@@ -32,6 +32,8 @@ double prDist = 0;
 
 double rotatedAngle = 0;
 
+bool maintainRatio = true;
+
 class _HomePageState extends State<HomePage> {
 
   double padLeft = 0.0, padTop = 0.0;
@@ -51,6 +53,8 @@ class _HomePageState extends State<HomePage> {
   double midX = 0, midY = 0;
 
   double curRotation = 0;
+
+  double ratio = 0;
 
   bool _insideRect(double x, double y) {
     return x >= finalMat.getTranslation().x &&
@@ -78,12 +82,8 @@ class _HomePageState extends State<HomePage> {
     tmp.add(Offset(curWidthRect / 2 + finalMat.getTranslation().x,
         curHeightRect * 2 + finalMat.getTranslation().y));
 
-    print('inside x = $x  y = $y');
-
     for (int i = 0; i < tmp.length; i++) {
       final o = tmp[i];
-      print('dxleft = ${o.dx - 20 * finalMat.storage[0]} dxright = ${o.dx + 20 * finalMat.storage[5]}'
-          '  dyleft = ${o.dy - 20 * finalMat.storage[0]} dyright = ${o.dy + 20 * finalMat.storage[5]}');
       if (x >= o.dx - 20 * finalMat.storage[0] &&
           x <= o.dx + 20 * finalMat.storage[0] &&
           y >= o.dy - 20 * finalMat.storage[5] &&
@@ -174,7 +174,7 @@ class _HomePageState extends State<HomePage> {
 
                     idxOfSelectedCircle = _insideCircle(lastX, lastY);
 
-                    print('tapdown  $idxOfSelectedCircle');
+                    //print('tapdown  $idxOfSelectedCircle');
 
                     if(curWidthRect == -1 && curHeightRect == -1) {
                       curWidthRect = Painter.curWidthRect;
@@ -198,7 +198,7 @@ class _HomePageState extends State<HomePage> {
                     double y = details.globalPosition.dy - padTop;
                     idxOfSelectedCircle = _insideCircle(x, y);
 
-                    print('tapup   $idxOfSelectedCircle');
+                    //print('tapup   $idxOfSelectedCircle');
 
                     if(idxOfSelectedCircle != -1) {
                       setState(() {
@@ -247,7 +247,7 @@ class _HomePageState extends State<HomePage> {
                         });
                       }
                     }
-                    print('panstart   $idxOfSelectedCircle');
+                    //print('panstart   $idxOfSelectedCircle');
                   },
 
                   onPanUpdate: (details) {
@@ -266,6 +266,9 @@ class _HomePageState extends State<HomePage> {
                     if(idxOfSelectedCircle >= 0 && idxOfSelectedCircle <= 3) {
                       double ddx, ddy;
 
+                      // vertical drag doesn't make any difference
+                      // need to work on it
+
                       if(idxOfSelectedCircle == 0) {
                         ddx = dx;
                         ddy = dy;
@@ -283,8 +286,10 @@ class _HomePageState extends State<HomePage> {
                         ddy = -dy;
                       }
 
+                      ratio = prHeight / prWidth;
+
                       double scaleX = (prWidth - ddx * 2) / prWidth;
-                      double scaleY = (prHeight - ddy * 2) / prHeight;
+                      double scaleY = (prHeight - ddx * ratio * 2) / prHeight;
 
                       double tX = (Painter.curWidthRect / 2), tY = (Painter.curHeightRect / 2);
 
@@ -321,7 +326,7 @@ class _HomePageState extends State<HomePage> {
 
                     tapX = tapY = -1;
 
-                    print('panend   $idxOfSelectedCircle');
+                    //print('panend   $idxOfSelectedCircle');
 
                     if(idxOfSelectedCircle != -1) {
                       setState(() {
