@@ -32,6 +32,8 @@ double prDist = 0;
 
 double rotatedAngle = 0;
 
+const double mnWidthRect = 20, mnHeightRect = 10;
+
 
 class _HomePageState extends State<HomePage> {
 
@@ -56,8 +58,6 @@ class _HomePageState extends State<HomePage> {
   double ratio = 0;
 
   bool maintainRatio = false;
-
-  double prX = 0, prY = 0;
 
   bool _insideRect(double x, double y) {
     return x >= finalMat.getTranslation().x &&
@@ -149,12 +149,11 @@ class _HomePageState extends State<HomePage> {
                     lastX = tapX;
                     lastY = tapY;
 
-                    prX = tapX;
-                    prY = tapY;
-
                     downMat.setFrom(finalMat);
 
                     idxOfSelectedCircle = _insideCircle(lastX, lastY);
+
+                    ratio = curHeightRect / curWidthRect;
 
                     print('tapdown  $tapX  $tapY');
 
@@ -244,6 +243,20 @@ class _HomePageState extends State<HomePage> {
                       if(maintainRatio) {
 
                         double ddx = 0;
+
+                        if(idxOfSelectedCircle == 0) {
+                          ddx = (dx + dy) / 2;
+                        }
+                        else if(idxOfSelectedCircle == 1) {
+                          ddx = (-dx + dy) / 2;
+                        }
+                        else if(idxOfSelectedCircle == 2) {
+                          ddx = (dx - dy) / 2;
+                        }
+                        else {
+                          ddx = (-dx - dy) / 2;
+                        }
+
                         scaleX = (prWidth - ddx * 2) / prWidth;
                         scaleY = (prHeight - ddx * ratio * 2) / prHeight;
                       }
@@ -253,57 +266,82 @@ class _HomePageState extends State<HomePage> {
                         calculateMid();
 
                         if (idxOfSelectedCircle == 0) {
-                          if(x <= midX - 10 && y <= midY - 10) {
+                          if(x <= midX) {
                             ddx = dx;
+                          }
+                          else {
+                            ddx = min((midX - mnWidthRect / 2), x) - lastX;
+                          }
+
+                          if(y <= midY - mnHeightRect / 2) {
                             ddy = dy;
                           }
                           else {
-                            ddx = min((midX - 10), x) - lastX;
-                            ddy = min((midY - 10), y) - lastY;
+                            ddy = min((midY - mnHeightRect / 2), y) - lastY;
                           }
                         }
                         else if (idxOfSelectedCircle == 1) {
-                          if(x >= midX + 10 && y <= midY - 10) {
+                          if(x >= midX + mnWidthRect / 2) {
                             ddx = -dx;
+                          }
+                          else {
+                            ddx = -(max((midX + mnWidthRect / 2), x) - lastX);
+                          }
+
+                          if(y <= midY - 10) {
                             ddy = dy;
                           }
                           else {
-                            ddx = -(max((midX + 10), x) - lastX);
-                            ddy = min((midY - 10), y) - lastY;
+                            ddy = min((midY - mnHeightRect / 2), y) - lastY;
                           }
                         }
                         else if (idxOfSelectedCircle == 2) {
-                          if(x <= midX - 10 && y >= midY + 10) {
+                          if(x <= midX - mnWidthRect / 2) {
                             ddx = dx;
+                          }
+                          else {
+                            ddx = min((midX - mnWidthRect / 2), x) - lastX;
+                          }
+
+                          if(y >= midY + mnHeightRect / 2) {
                             ddy = -dy;
                           }
                           else {
-                            ddx = min((midX - 10), x) - lastX;
-                            ddy = -(max((midY + 10), y) - lastY);
+                            ddy = -(max((midY + mnHeightRect / 2), y) - lastY);
                           }
                         }
                         else {
-                          if(x >= midX + 10 && y >= midY + 10) {
+                          if(x >= midX + mnWidthRect / 2) {
                             ddx = -dx;
+                          }
+                          else {
+                            ddx = -(max((midX + mnWidthRect / 2), x) - lastX);
+                          }
+
+                          if(y >= midY + mnHeightRect / 2) {
                             ddy = -dy;
                           }
                           else {
-                            ddx = -(max((midX + 10), x) - lastX);
-                            ddy = -(max((midY + 10), y) - lastY);
+                            ddy = -(max((midY + mnHeightRect / 2), y) - lastY);
                           }
                         }
                         scaleX = (prWidth - ddx * 2) / prWidth;
                         scaleY = (prHeight - ddy * 2) / prHeight;
                       }
 
-                      double tX = (Painter.curWidthRect / 2), tY = (Painter.curHeightRect / 2);
+                      double nextWidthRect = prWidth * scaleX;
+                      double nextHeightRect = prHeight * scaleY;
 
-                      scale(scaleX, scaleY, tX, tY);
+                        if(nextWidthRect >= mnWidthRect && nextHeightRect >= mnHeightRect) {
+                          double tX = (Painter.curWidthRect / 2),
+                              tY = (Painter.curHeightRect / 2);
 
-                      curWidthRect = prWidth * scaleX;
-                      curHeightRect = prHeight * scaleY;
+                          scale(scaleX, scaleY, tX, tY);
+                          curWidthRect = nextWidthRect;
+                          curHeightRect = nextHeightRect;
+                          setState(() {});
+                        }
 
-                      setState(() {});
                     }
                     else if(idxOfSelectedCircle == 4) {
 
@@ -324,9 +362,6 @@ class _HomePageState extends State<HomePage> {
                       translate(dx / finalMat.storage[0], dy / finalMat.storage[5]);
                       setState(() {});
                     }
-
-                    prX = x;
-                    prY = y;
                   },
 
                   onPanEnd: (details) {
@@ -343,19 +378,6 @@ class _HomePageState extends State<HomePage> {
                       idxOfSelectedCircle = -1;
                     }
                   },
-                  // onLongPress: () {
-                  //   //curRotation += 30;
-                  //   double tX = Painter.curWidthRect / 2, tY = Painter.curHeightRect / 2;
-                  //   rotate(degToRad(30), tX, tY);
-                  //
-                  //   rotatedAngle += 30;
-                  //
-                  //   calculateMid();
-                  //
-                  //   print('mx = $midX  my = $midY   ${finalMat.storage[1]}  ${radToDeg(asin(finalMat.storage[1]))}');
-                  //
-                  //   setState(() {});
-                  // },
 
                   child: CustomPaint(
                     painter: Painter(
