@@ -32,7 +32,6 @@ double prDist = 0;
 
 double rotatedAngle = 0;
 
-bool maintainRatio = true;
 
 class _HomePageState extends State<HomePage> {
 
@@ -55,6 +54,10 @@ class _HomePageState extends State<HomePage> {
   double curRotation = 0;
 
   double ratio = 0;
+
+  bool maintainRatio = false;
+
+  double prX = 0, prY = 0;
 
   bool _insideRect(double x, double y) {
     return x >= finalMat.getTranslation().x &&
@@ -93,30 +96,6 @@ class _HomePageState extends State<HomePage> {
     }
     return -1;
   }
-
-  // int _insideCircle(double x, double y) {
-  //   if(!rect || curCircles.isEmpty) return -1;
-  //
-  //   List<Offset> tmp = [];
-  //   tmp.add(Offset(finalMat.getTranslation().x, finalMat.getTranslation().y));
-  //   tmp.add(Offset(Painter.curWidthRect * finalMat.storage[0] + finalMat.getTranslation().x, finalMat.getTranslation().y));
-  //   tmp.add(Offset(finalMat.getTranslation().x, Painter.curHeightRect * finalMat.storage[5] + finalMat.getTranslation().y));
-  //   tmp.add(Offset(Painter.curWidthRect * finalMat.storage[0] + finalMat.getTranslation().x,
-  //       Painter.curHeightRect * finalMat.storage[5] + finalMat.getTranslation().y));
-  //   tmp.add(Offset(Painter.curWidthRect / 2 * finalMat.storage[0] + finalMat.getTranslation().x,
-  //       Painter.curHeightRect * 2 * finalMat.storage[5] + finalMat.getTranslation().y));
-  //
-  //   for (int i = 0; i < tmp.length; i++) {
-  //     final o = tmp[i];
-  //     if (x >= o.dx - 20 * finalMat.storage[0] &&
-  //         x <= o.dx + 20 * finalMat.storage[0] &&
-  //         y >= o.dy - 20 * finalMat.storage[5] &&
-  //         y <= o.dy + 20 * finalMat.storage[5]) {
-  //       return i;
-  //     }
-  //   }
-  //   return -1;
-  // }
 
   void calculateMid() {
 
@@ -170,11 +149,14 @@ class _HomePageState extends State<HomePage> {
                     lastX = tapX;
                     lastY = tapY;
 
+                    prX = tapX;
+                    prY = tapY;
+
                     downMat.setFrom(finalMat);
 
                     idxOfSelectedCircle = _insideCircle(lastX, lastY);
 
-                    //print('tapdown  $idxOfSelectedCircle');
+                    print('tapdown  $tapX  $tapY');
 
                     if(curWidthRect == -1 && curHeightRect == -1) {
                       curWidthRect = Painter.curWidthRect;
@@ -211,15 +193,10 @@ class _HomePageState extends State<HomePage> {
                   onTap: () {
                     setState(() {
                       rect = _insideRect(lastX, lastY);
-                    }
-                    );
+                    });
                   },
 
                   onPanStart: (details) {
-
-                    // lastX and lastY should be onTapDown.. otherwise when the rectangle is small even if first tap is
-                    // inside the rectangle onPanStart might not be same as first tap. it might be outside the rectangle
-                    // and the rectangle might not move as expected
 
                     if(tapX == -1 && tapY == -1) {
                       lastX = details.globalPosition.dx - padLeft;
@@ -261,35 +238,63 @@ class _HomePageState extends State<HomePage> {
                     double dx = x - lastX;
                     double dy = y - lastY;
 
-                    print('panupdate   $idxOfSelectedCircle');
-
                     if(idxOfSelectedCircle >= 0 && idxOfSelectedCircle <= 3) {
-                      double ddx, ddy;
+                      double scaleX = 1, scaleY = 1;
 
-                      // vertical drag doesn't make any difference
-                      // need to work on it
+                      if(maintainRatio) {
 
-                      if(idxOfSelectedCircle == 0) {
-                        ddx = dx;
-                        ddy = dy;
-                      }
-                      else if(idxOfSelectedCircle == 1) {
-                        ddx = -dx;
-                        ddy = dy;
-                      }
-                      else if(idxOfSelectedCircle == 2) {
-                        ddx = dx;
-                        ddy = -dy;
+                        double ddx = 0;
+                        scaleX = (prWidth - ddx * 2) / prWidth;
+                        scaleY = (prHeight - ddx * ratio * 2) / prHeight;
                       }
                       else {
-                        ddx = -dx;
-                        ddy = -dy;
+                        double ddx = 0, ddy = 0;
+
+                        calculateMid();
+
+                        if (idxOfSelectedCircle == 0) {
+                          if(x <= midX - 10 && y <= midY - 10) {
+                            ddx = dx;
+                            ddy = dy;
+                          }
+                          else {
+                            ddx = min((midX - 10), x) - lastX;
+                            ddy = min((midY - 10), y) - lastY;
+                          }
+                        }
+                        else if (idxOfSelectedCircle == 1) {
+                          if(x >= midX + 10 && y <= midY - 10) {
+                            ddx = -dx;
+                            ddy = dy;
+                          }
+                          else {
+                            ddx = -(max((midX + 10), x) - lastX);
+                            ddy = min((midY - 10), y) - lastY;
+                          }
+                        }
+                        else if (idxOfSelectedCircle == 2) {
+                          if(x <= midX - 10 && y >= midY + 10) {
+                            ddx = dx;
+                            ddy = -dy;
+                          }
+                          else {
+                            ddx = min((midX - 10), x) - lastX;
+                            ddy = -(max((midY + 10), y) - lastY);
+                          }
+                        }
+                        else {
+                          if(x >= midX + 10 && y >= midY + 10) {
+                            ddx = -dx;
+                            ddy = -dy;
+                          }
+                          else {
+                            ddx = -(max((midX + 10), x) - lastX);
+                            ddy = -(max((midY + 10), y) - lastY);
+                          }
+                        }
+                        scaleX = (prWidth - ddx * 2) / prWidth;
+                        scaleY = (prHeight - ddy * 2) / prHeight;
                       }
-
-                      ratio = prHeight / prWidth;
-
-                      double scaleX = (prWidth - ddx * 2) / prWidth;
-                      double scaleY = (prHeight - ddx * ratio * 2) / prHeight;
 
                       double tX = (Painter.curWidthRect / 2), tY = (Painter.curHeightRect / 2);
 
@@ -319,6 +324,9 @@ class _HomePageState extends State<HomePage> {
                       translate(dx / finalMat.storage[0], dy / finalMat.storage[5]);
                       setState(() {});
                     }
+
+                    prX = x;
+                    prY = y;
                   },
 
                   onPanEnd: (details) {
