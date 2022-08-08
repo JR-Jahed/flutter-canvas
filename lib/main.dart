@@ -57,40 +57,52 @@ class _HomePageState extends State<HomePage> {
 
   double ratio = 0;
 
-  bool maintainRatio = false;
+  bool maintainRatio = true;
 
   bool _insideRect(double x, double y) {
-    return x >= finalMat.getTranslation().x &&
-        x <= curWidthRect + finalMat.getTranslation().x &&
-        y >= finalMat.getTranslation().y &&
-        y <= curHeightRect + finalMat.getTranslation().y;
-  }
 
-  bool _insideRect2(double x, double y) {
+    double beginX = finalMat.getTranslation().x + (curWidthRect * (finalMat.storage[0] < 0 ? -1 : 0));
+    double beginY = finalMat.getTranslation().y + (curHeightRect * (finalMat.storage[5] < 0 ? -1 : 0));
+    double endX = finalMat.getTranslation().x + (curWidthRect * (finalMat.storage[0] < 0 ? 0 : 1));
+    double endY = finalMat.getTranslation().y + (curHeightRect * (finalMat.storage[5] < 0 ? 0 : 1));
 
-    return x >=finalMat.getTranslation().x * cos(degToRad(rotatedAngle)) &&
-        x <= curWidthRect + finalMat.getTranslation().x * cos(degToRad(degToRad(rotatedAngle))) &&
-        y >=finalMat.getTranslation().y * sin(degToRad(rotatedAngle)) &&
-        y <= curHeightRect + finalMat.getTranslation().y * sin(degToRad(rotatedAngle));
+    return x >= beginX &&
+        x <= endX &&
+        y >= beginY &&
+        y <= endY;
   }
 
   int _insideCircle(double x, double y) {
     if(!rect || curCircles.isEmpty) return -1;
 
     List<Offset> tmp = [];
-    tmp.add(Offset(finalMat.getTranslation().x, finalMat.getTranslation().y));
-    tmp.add(Offset(curWidthRect + finalMat.getTranslation().x, finalMat.getTranslation().y));
-    tmp.add(Offset(finalMat.getTranslation().x, curHeightRect + finalMat.getTranslation().y));
-    tmp.add(Offset(curWidthRect + finalMat.getTranslation().x, curHeightRect + finalMat.getTranslation().y));
-    tmp.add(Offset(curWidthRect / 2 + finalMat.getTranslation().x,
-        curHeightRect * 2 + finalMat.getTranslation().y));
+    tmp.add(Offset(finalMat.getTranslation().x, finalMat.getTranslation().y)); // no change for flip
+
+    tmp.add(Offset(finalMat.getTranslation().x + curWidthRect * (finalMat.storage[0] < 0 ? -1 : 1),
+        finalMat.getTranslation().y)); // change if flipped hor
+
+    tmp.add(Offset(finalMat.getTranslation().x,
+        finalMat.getTranslation().y + curHeightRect * (finalMat.storage[5] < 0 ? -1 : 1))); // change if flipped ver
+
+    tmp.add(Offset(finalMat.getTranslation().x + curWidthRect * (finalMat.storage[0] < 0 ? -1 : 1),
+        finalMat.getTranslation().y + curHeightRect * (finalMat.storage[5] < 0 ? -1 : 1))); // change for both direction
+
+    tmp.add(Offset(finalMat.getTranslation().x + curWidthRect / 2 * (finalMat.storage[0] < 0 ? -1 : 1),
+        finalMat.getTranslation().y + curHeightRect * 2 * (finalMat.storage[5] < 0 ? -1 : 1)));  // change for both direction
+
+    tmp.add(Offset(finalMat.getTranslation().x,
+        finalMat.getTranslation().y + curHeightRect * 2 * (finalMat.storage[5] < 0 ? -1 : 1))); // change if flipped ver
+
+
+    tmp.add(Offset(finalMat.getTranslation().x + curWidthRect * (finalMat.storage[0] < 0 ? -1 : 1),
+       finalMat.getTranslation().y + curHeightRect * 2 * (finalMat.storage[5] < 0 ? -1 : 1))); // change for both direction
 
     for (int i = 0; i < tmp.length; i++) {
       final o = tmp[i];
-      if (x >= o.dx - 20 * finalMat.storage[0] &&
-          x <= o.dx + 20 * finalMat.storage[0] &&
-          y >= o.dy - 20 * finalMat.storage[5] &&
-          y <= o.dy + 20 * finalMat.storage[5]) {
+      if (x >= o.dx - 20 * finalMat.storage[0].abs() &&
+          x <= o.dx + 20 * finalMat.storage[0].abs() &&
+          y >= o.dy - 20 * finalMat.storage[5].abs() &&
+          y <= o.dy + 20 * finalMat.storage[5].abs()) {
         return i;
       }
     }
@@ -98,7 +110,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void calculateMid() {
-
     midX = finalMat.getTranslation().x + curWidthRect / 2;
     midY = finalMat.getTranslation().y + curHeightRect / 2;
   }
@@ -131,6 +142,23 @@ class _HomePageState extends State<HomePage> {
     finalMat.setFrom(opMat);
   }
 
+  void flipHorizontally() {
+    opMat.setFrom(downMat);
+    opMat.storage[0] *= -1;
+    finalMat.setFrom(opMat);
+  }
+  void flipVertically() {
+    opMat.setFrom(downMat);
+    opMat.storage[5] *= -1;
+    finalMat.setFrom(opMat);
+  }
+  void flip() {
+    opMat.setFrom(downMat);
+    opMat.storage[0] *= -1;
+    opMat.storage[5] *= -1;
+    finalMat.setFrom(opMat);
+  }
+
   @override
   Widget build(BuildContext context) {
     padLeft = MediaQuery.of(context).padding.left;
@@ -155,8 +183,6 @@ class _HomePageState extends State<HomePage> {
 
                     ratio = curHeightRect / curWidthRect;
 
-                    print('tapdown  $tapX  $tapY');
-
                     if(curWidthRect == -1 && curHeightRect == -1) {
                       curWidthRect = Painter.curWidthRect;
                       curHeightRect = Painter.curHeightRect;
@@ -166,6 +192,12 @@ class _HomePageState extends State<HomePage> {
                     prHeight = curHeightRect;
 
                     if(idxOfSelectedCircle != -1) {
+                      if(idxOfSelectedCircle == 5) {
+                        flipHorizontally();
+                      }
+                      else if(idxOfSelectedCircle == 6) {
+                        flipVertically();
+                      }
                       setState(() {
                         circleSelected = true;
                         curCircles[idxOfSelectedCircle].second = 10;
@@ -175,17 +207,13 @@ class _HomePageState extends State<HomePage> {
 
                   onTapUp: (details) {
                     tapX = tapY = -1;
-                    double x = details.globalPosition.dx - padLeft;
-                    double y = details.globalPosition.dy - padTop;
-                    idxOfSelectedCircle = _insideCircle(x, y);
-
-                    //print('tapup   $idxOfSelectedCircle');
 
                     if(idxOfSelectedCircle != -1) {
                       setState(() {
                         circleSelected = false;
                         curCircles[idxOfSelectedCircle].second = 5;
                       });
+                      idxOfSelectedCircle = -1;
                     }
                   },
 
@@ -379,6 +407,11 @@ class _HomePageState extends State<HomePage> {
                     }
                   },
 
+                  // onLongPress: () {
+                  //   flip();
+                  //   setState(() {});
+                  // },
+
                   child: CustomPaint(
                     painter: Painter(
                       rect: rect,
@@ -409,11 +442,10 @@ class Painter extends CustomPainter {
     ..strokeWidth = 4.0
     ..color = Colors.blue;
 
-  final Paint _paintRed = Paint()
-    ..color = Colors.red;
-
-  final Paint _paintGreen = Paint()
-    ..color = Colors.green;
+  final Paint _paintRed = Paint()..color = Colors.red;
+  final Paint _paintGreen = Paint()..color = Colors.green;
+  final Paint _paintPurple = Paint()..color = Colors.purple;
+  final Paint _paintTeal = Paint()..color = Colors.teal;
 
   static final TextPainter textPainter = TextPainter(
     text: const TextSpan(
@@ -461,14 +493,28 @@ class Painter extends CustomPainter {
       if(!find(Offset(curWidthRect / 2, curHeightRect * 2))) {
         curCirclesPainter.add(Pair(first: Offset(curWidthRect / 2, curHeightRect * 2), second: 5));
       }
+      if(!find(Offset(0, curHeightRect * 2))) {
+        curCirclesPainter.add(Pair(first: Offset(0, curHeightRect * 2), second: 5));
+      }
+      if(!find(Offset(curWidthRect, curHeightRect * 2))) {
+        curCirclesPainter.add(Pair(first: Offset(curWidthRect, curHeightRect * 2), second: 5));
+      }
 
       curCircles = curCirclesPainter;
 
-      for (Pair p in curCirclesPainter) {
-        canvas.drawCircle(
-            p.first,
-            p.second,
-            (p == curCirclesPainter.last ? _paintGreen : _paintRed));
+      for(int i = 0; i < curCirclesPainter.length; i++) {
+        if(i <= 3) {
+          canvas.drawCircle(curCirclesPainter[i].first, curCirclesPainter[i].second, _paintRed);
+        }
+        else if(i == 4) {
+          canvas.drawCircle(curCirclesPainter[i].first, curCirclesPainter[i].second, _paintGreen);
+        }
+        else if(i == 5) {
+          canvas.drawCircle(curCirclesPainter[i].first, curCirclesPainter[i].second, _paintPurple);
+        }
+        else {
+          canvas.drawCircle(curCirclesPainter[i].first, curCirclesPainter[i].second, _paintTeal);
+        }
       }
     }
   }
