@@ -59,6 +59,10 @@ class _HomePageState extends State<HomePage> {
 
   bool maintainRatio = true;
 
+  List<int> flippedHor = [1, 0, 3, 2];
+  List<int> flippedVer = [2, 3, 0, 1];
+  List<int> flippedBoth = [3, 2, 1, 0];
+
   bool _insideRect(double x, double y) {
 
     double beginX = finalMat.getTranslation().x + (curWidthRect * (finalMat.storage[0] < 0 ? -1 : 0));
@@ -144,12 +148,16 @@ class _HomePageState extends State<HomePage> {
 
   void flipHorizontally() {
     opMat.setFrom(downMat);
+    opMat.translate(Painter.curWidthRect / 2, Painter.curHeightRect / 2);
     opMat.storage[0] *= -1;
+    opMat.translate(-Painter.curWidthRect / 2, -Painter.curHeightRect / 2);
     finalMat.setFrom(opMat);
   }
   void flipVertically() {
     opMat.setFrom(downMat);
+    opMat.translate(Painter.curWidthRect / 2, Painter.curHeightRect / 2);
     opMat.storage[5] *= -1;
+    opMat.translate(-Painter.curWidthRect / 2, -Painter.curHeightRect / 2);
     finalMat.setFrom(opMat);
   }
   void flip() {
@@ -268,33 +276,47 @@ class _HomePageState extends State<HomePage> {
                     if(idxOfSelectedCircle >= 0 && idxOfSelectedCircle <= 3) {
                       double scaleX = 1, scaleY = 1;
 
+                      int idx = idxOfSelectedCircle;
+
+                      if(finalMat.storage[0] < 0 && finalMat.storage[5] < 0) {
+                        idx = flippedBoth[idxOfSelectedCircle];
+                      }
+                      else if(finalMat.storage[0] < 0) {
+                        idx = flippedHor[idxOfSelectedCircle];
+                      }
+                      else if(finalMat.storage[5] < 0) {
+                        idx = flippedVer[idxOfSelectedCircle];
+                      }
+
                       if(maintainRatio) {
 
                         double ddx = 0;
 
-                        if(idxOfSelectedCircle == 0) {
+                        if(idx == 0) {
                           ddx = (dx + dy) / 2;
                         }
-                        else if(idxOfSelectedCircle == 1) {
+                        else if(idx == 1) {
                           ddx = (-dx + dy) / 2;
                         }
-                        else if(idxOfSelectedCircle == 2) {
+                        else if(idx == 2) {
                           ddx = (dx - dy) / 2;
                         }
                         else {
                           ddx = (-dx - dy) / 2;
                         }
 
-                        scaleX = (prWidth - ddx * 2) / prWidth;
-                        scaleY = (prHeight - ddx * ratio * 2) / prHeight;
+                        scaleX = (prWidth - ddx * 2) / prWidth;// * (finalMat.storage[0] < 0 ? -1 : 1);
+                        scaleY = (prHeight - ddx * ratio * 2) / prHeight;// * (finalMat.storage[5] < 0 ? -1 : 1);
+
+                        print('dx = $dx  dy = $dy  sx = $scaleX  sy = $scaleY  ${finalMat.storage[0]}  ${finalMat.storage[5]} ratio = $ratio');
                       }
                       else {
                         double ddx = 0, ddy = 0;
 
                         calculateMid();
 
-                        if (idxOfSelectedCircle == 0) {
-                          if(x <= midX) {
+                        if (idx == 0) {
+                          if(x <= midX - mnHeightRect / 2) {
                             ddx = dx;
                           }
                           else {
@@ -308,7 +330,7 @@ class _HomePageState extends State<HomePage> {
                             ddy = min((midY - mnHeightRect / 2), y) - lastY;
                           }
                         }
-                        else if (idxOfSelectedCircle == 1) {
+                        else if (idx == 1) {
                           if(x >= midX + mnWidthRect / 2) {
                             ddx = -dx;
                           }
@@ -323,7 +345,7 @@ class _HomePageState extends State<HomePage> {
                             ddy = min((midY - mnHeightRect / 2), y) - lastY;
                           }
                         }
-                        else if (idxOfSelectedCircle == 2) {
+                        else if (idx == 2) {
                           if(x <= midX - mnWidthRect / 2) {
                             ddx = dx;
                           }
@@ -355,20 +377,21 @@ class _HomePageState extends State<HomePage> {
                         }
                         scaleX = (prWidth - ddx * 2) / prWidth;
                         scaleY = (prHeight - ddy * 2) / prHeight;
+                        print('idx = $idx   idxof = $idxOfSelectedCircle  sx = $scaleX  sy = $scaleY dx = $dx  ddx = $ddx');
                       }
 
                       double nextWidthRect = prWidth * scaleX;
                       double nextHeightRect = prHeight * scaleY;
 
-                        if(nextWidthRect >= mnWidthRect && nextHeightRect >= mnHeightRect) {
-                          double tX = (Painter.curWidthRect / 2),
-                              tY = (Painter.curHeightRect / 2);
+                      if(nextWidthRect >= mnWidthRect && nextHeightRect >= mnHeightRect) {
+                        double tX = (Painter.curWidthRect / 2),
+                            tY = (Painter.curHeightRect / 2);
 
-                          scale(scaleX, scaleY, tX, tY);
-                          curWidthRect = nextWidthRect;
-                          curHeightRect = nextHeightRect;
-                          setState(() {});
-                        }
+                        scale(scaleX, scaleY, tX, tY);
+                        curWidthRect = nextWidthRect;
+                        curHeightRect = nextHeightRect;
+                        setState(() {});
+                      }
 
                     }
                     else if(idxOfSelectedCircle == 4) {
